@@ -2,12 +2,12 @@ import React, { createContext, useState } from 'react'
 
 import { Boxes } from '../containers/UploadBoxes'
 
-export interface IUploadBoxContentContext {
+export type TUploadBoxContentContext = {
   currentBox: Boxes
   setCurrentBox: React.Dispatch<Boxes>
 }
 
-export const UploadBoxContentContext = createContext<IUploadBoxContentContext>({
+export const UploadBoxContentContext = createContext<TUploadBoxContentContext>({
   currentBox: 'DefaultUploadBox',
   setCurrentBox: () => undefined
 })

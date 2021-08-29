@@ -1,3 +1,4 @@
+import TypographyH5 from './TypographyH5'
 import TypographyP from './TypographyP'
 
-export { TypographyP }
+export { TypographyH5, TypographyP }

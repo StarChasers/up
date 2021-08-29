@@ -1,18 +1,22 @@
 import { useContext } from 'react'
 
 import {
-  IUploadBoxContentContext,
+  TUploadBoxContentContext,
   UploadBoxContentContext
 } from '../../providers/UploadBoxContentProvider'
 import { IHomePageProps } from '../../pages'
+import { FileUploadContext, TFileUploadContext } from '../../providers/FileUploadProvider'
 
 export interface IHomePageStateProps {
-  uploadBoxContent: IUploadBoxContentContext
+  uploadBoxContent: TUploadBoxContentContext
+  fileUploadContext: TFileUploadContext
 }
 
 const useHomePage = ({}: IHomePageProps): IHomePageStateProps => {
   const uploadBoxContent = useContext(UploadBoxContentContext)
-  return { uploadBoxContent }
+  const fileUploadContext = useContext(FileUploadContext)
+
+  return { uploadBoxContent, fileUploadContext }
 }
 
 export default useHomePage

@@ -26,7 +26,7 @@ interface IButtonProps {
  * @example
  *   <Button variant='outlined'>My awesome text!</Button>
  **/
-const Button = ({ children = null, variant = 'primary', ...props }: IButtonProps) => {
+const Button = ({ children, variant, ...props }: IButtonProps) => {
   const Variant = useMemo(() => {
     return variants[variant]
   }, [variant])

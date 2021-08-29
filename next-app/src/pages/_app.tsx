@@ -4,11 +4,14 @@ import { AppProps } from 'next/app'
 
 import GlobalStyle from '../components/elements/Layout/GlobalStyle'
 import theme from '../assets/theme'
+import Providers from '../components/elements/Layout/Providers'
 
 const App = ({ Component, pageProps }: AppProps) => (
   <ThemeProvider theme={theme}>
     {GlobalStyle}
-    <Component {...pageProps} />
+    <Providers>
+      <Component {...pageProps} />
+    </Providers>
   </ThemeProvider>
 )
 
