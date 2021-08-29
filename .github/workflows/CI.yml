@@ -3,9 +3,55 @@ name: CI
 on: push
 
 jobs:
+  install-dependencies:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install Dependencies
+        run: cd ./next-app && yarn install --frozen-lockfile
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: './next-app/node_modules'
+          key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
+  eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    needs: install-dependencies
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: './next-app/node_modules'
+          key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
+      - name: Run ESLint
+        run: cd ./next-app && npx eslint @types src
+  build-website:
+    name: Website Build
+    runs-on: ubuntu-latest
+    needs: eslint
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: './next-app/node_modules'
+          key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
+      - name: Build
+        run: cd ./next-app && yarn build
+      - name: Cache next-app-build
+        uses: actions/cache@v2
+        with:
+          path: './next-app/.next'
+          key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
   build:
     runs-on: ubuntu-latest
-
+    needs: build-website
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
