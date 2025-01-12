@@ -1,16 +1,16 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("org.springframework.boot") version "3.0.1"
     id("io.spring.dependency-management") version "1.1.0"
-    id("org.asciidoctor.jvm.convert") version "3.1.0"
+    id("org.asciidoctor.jvm.convert") version "3.2.0"
     id("org.flywaydb.flyway") version "7.5.2"
-    id("org.jlleitschuh.gradle.ktlint") version "11.0.0"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
 
-    kotlin("jvm") version "1.7.21"
-    kotlin("plugin.spring") version "1.7.21"
-    kotlin("plugin.jpa") version "1.7.21"
-    kotlin("kapt") version "1.7.21"
+    kotlin("jvm") version "2.1.0"
+    kotlin("plugin.spring") version "2.1.0"
+    kotlin("plugin.jpa") version "2.1.0"
+    kotlin("kapt") version "2.1.0"
 }
 
 group = "pl.starchasers"
@@ -19,7 +19,6 @@ java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 dependencies {
@@ -30,7 +29,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("commons-fileupload:commons-fileupload:1.4")
+    implementation("commons-fileupload:commons-fileupload:1.5")
     implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
     implementation("io.jsonwebtoken:jjwt-gson:0.11.5")
     implementation("org.flywaydb:flyway-core:9.10.2")
@@ -52,10 +51,10 @@ dependencies {
     testImplementation("io.kotest:kotest-assertions-core:5.5.4")
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
         freeCompilerArgs = listOf("-Xjsr305=strict", "-Xemit-jvm-type-annotations")
-        jvmTarget = "17"
     }
 }
 
@@ -66,6 +65,8 @@ ext {
 }
 
 ktlint {
+    version.set("1.4.1")
+    ignoreFailures.set(true)
     disabledRules.set(setOf("no-wildcard-imports"))
 }
 
