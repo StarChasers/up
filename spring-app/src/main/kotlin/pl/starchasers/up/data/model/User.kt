@@ -4,9 +4,10 @@ import jakarta.persistence.*
 import pl.starchasers.up.data.value.*
 import pl.starchasers.up.security.Role
 
-@Entity
+@Entity(name = "application_user")
 class User(
     @Id
+    @Column(nullable = false, updatable = false, name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long,
 
@@ -19,6 +20,7 @@ class User(
     @Embedded
     var email: Email?,
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = false)
     var role: Role,
 

@@ -1,0 +1,40 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: ${UP_JDBC_STRING}
+    username: ${UP_DB_USER}
+    password: ${UP_DB_PASS}
+    driver-class-name: org.postgresql.Driver
+  servlet:
+    multipart:
+      enabled: true
+      resolve-lazily: true
+      max-file-size: ${UP_MAX_FILE_SIZE:10GB}
+      max-request-size: ${UP_MAX_REQUEST_SIZE:10GB}
+  flyway:
+    enabled: true
+
+server:
+  port: ${UP_PORT:8080}
+
+springdoc:
+  api-docs:
+    enabled: ${UP_SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${UP_SWAGGER_ENABLED:false}
+
+up:
+  datastore: ${UP_DATASTORE_PATH:uploads}
+  #in bytes. Default 4 * 1024 * 1024 (4MB)
+  chunk-size: ${UP_CHUNK_SIZE:4194304}
+  #in milliseconds. Default 1h
+  cleanup-interval: ${UP_CLEANUP_INTERVAL:3600000}
+  domain: ${UP_DOMAIN:http://localhost:8080}
+  dev:
+    cors: ${UP_DEV_CORS:false}
+  #Secret will be randomly generated at runtime if UP_JWT_BASE64_SECRET variable is not set.
+  #Warning: sessions will be invalidated during application restart
+  jwt:
+    base64-secret: ${UP_JWT_BASE64_SECRET:}

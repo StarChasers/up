@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("org.springframework.boot") version "3.0.1"
+    id("org.springframework.boot") version "3.1.4"
     id("io.spring.dependency-management") version "1.1.0"
     id("org.asciidoctor.jvm.convert") version "3.2.0"
     id("org.flywaydb.flyway") version "7.5.2"
@@ -39,11 +39,13 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2")
     implementation("com.github.therapi:therapi-runtime-javadoc:0.15.0")
     kapt("com.github.therapi:therapi-runtime-javadoc-scribe:0.15.0")
-    runtimeOnly("com.h2database:h2:1.4.200")
-    runtimeOnly("mysql:mysql-connector-java")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     runtimeOnly(files("../next-app/next-app.jar"))
 
+    runtimeOnly("org.postgresql:postgresql:42.7.5")
+
+    testImplementation("org.postgresql:postgresql:42.7.5")
+    testImplementation("org.testcontainers:postgresql:1.20.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
