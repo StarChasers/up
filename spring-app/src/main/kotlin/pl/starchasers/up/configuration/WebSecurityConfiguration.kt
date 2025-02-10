@@ -25,12 +25,7 @@ class WebSecurityConfiguration() {
     fun filterChain(http: HttpSecurity): SecurityFilterChain = http
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-        .also {
-            if (devCors) {
-                logger.info("Development environment set. Enabling CORS for all origins.")
-                it.cors {}
-            }
-        }
+        .cors {}
         .build()
 
     @Bean
@@ -38,7 +33,7 @@ class WebSecurityConfiguration() {
         val configuration = CorsConfiguration()
         configuration.allowedOrigins = listOf("*")
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH")
-//        configuration.allowCredentials = true
+        configuration.allowCredentials = false
         configuration.applyPermitDefaultValues()
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", configuration)
