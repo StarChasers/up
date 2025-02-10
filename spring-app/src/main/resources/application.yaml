@@ -3,7 +3,7 @@ spring:
     hibernate:
       ddl-auto: validate
   datasource:
-    url: ${UP_JDBC_STRING}
+    url: jdbc:postgresql://${UP_DB_HOST:localhost}:${UP_DB_PORT:5432}/${UP_DB_NAME}?currentSchema=${UP_DB_SCHEMA}&encoding=UTF-8
     username: ${UP_DB_USER}
     password: ${UP_DB_PASS}
     driver-class-name: org.postgresql.Driver
