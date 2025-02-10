@@ -1,13 +1,14 @@
 package pl.starchasers.up
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.*
 
 object DefaultObjectMapper {
-    val objectMapper: ObjectMapper = jacksonObjectMapper()
+    val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
 }
 
 var MockHttpServletRequestDsl.jsonContent: Any?

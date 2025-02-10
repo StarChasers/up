@@ -8,18 +8,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import pl.starchasers.up.security.JwtTokenFilter
-import pl.starchasers.up.service.JwtTokenService
 
 @Configuration
 @EnableWebSecurity
-class WebSecurityConfiguration(
-    private val jwtTokenService: JwtTokenService
-) {
+class WebSecurityConfiguration() {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
 
@@ -30,12 +25,11 @@ class WebSecurityConfiguration(
     fun filterChain(http: HttpSecurity): SecurityFilterChain = http
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-        .addFilterBefore(JwtTokenFilter(jwtTokenService), UsernamePasswordAuthenticationFilter::class.java)
         .also {
             if (devCors) {
                 logger.info("Development environment set. Enabling CORS for all origins.")
+                it.cors {}
             }
-            it.cors()
         }
         .build()
 
