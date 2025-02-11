@@ -29,7 +29,7 @@ class AutomaticCleanupService(
                 if (uploadRepository.exists(it.key)) {
                     uploadRepository.delete(it.key)
                 }
-                fileEntryRepository.delete(it)
+                it.delete()
             } catch (e: IOException) {
                 val sw = StringWriter()
                 val pw = PrintWriter(sw)

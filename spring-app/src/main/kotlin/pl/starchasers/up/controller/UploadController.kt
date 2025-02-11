@@ -13,25 +13,21 @@ import org.springframework.web.multipart.MultipartFile
 import pl.starchasers.up.data.dto.upload.AuthorizedOperationDTO
 import pl.starchasers.up.data.dto.upload.FileDetailsDTO
 import pl.starchasers.up.data.dto.upload.UploadCompleteResponseDTO
-import pl.starchasers.up.data.value.*
 import pl.starchasers.up.exception.AccessDeniedException
 import pl.starchasers.up.exception.NotFoundException
 import pl.starchasers.up.service.FileService
 import pl.starchasers.up.service.FileStorageService
-import pl.starchasers.up.service.UserService
 import pl.starchasers.up.util.BasicResponseDTO
 import pl.starchasers.up.util.RequestRangeParser
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.nio.charset.Charset
-import java.security.Principal
 
 @RestController
 class UploadController(
     private val fileStorageService: FileStorageService,
     private val fileService: FileService,
-    private val requestRangeParser: RequestRangeParser,
-    private val userService: UserService
+    private val requestRangeParser: RequestRangeParser
 ) {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -41,19 +37,16 @@ class UploadController(
      * @param file Uploaded file content
      */
     @PostMapping("/api/upload")
-    fun anonymousUpload(@RequestParam file: MultipartFile, principal: Principal?): UploadCompleteResponseDTO {
-        val user = userService.fromPrincipal(principal)
-        val contentType = ContentType(
+    fun anonymousUpload(@RequestParam file: MultipartFile): UploadCompleteResponseDTO {
+        val contentType =
             if (file.contentType == null || file.contentType!!.isBlank()) "application/octet-stream"
             else file.contentType!!
-        )
 
         return fileService.createFile(
             BufferedInputStream(file.inputStream),
-            Filename(file.originalFilename ?: "file"),
+            file.originalFilename ?: "file",
             contentType,
-            FileSize(file.size),
-            user
+            file.size
         )
     }
 
@@ -63,8 +56,8 @@ class UploadController(
      */
     @GetMapping("/u/{fileKey}")
     fun getAnonymousUpload(@PathVariable fileKey: String, request: HttpServletRequest, response: HttpServletResponse) {
-        val (fileEntry, stream) = fileStorageService.getStoredFileRaw(FileKey(fileKey))
-        response.contentType = fileEntry.contentType.value
+        val (fileEntry, stream) = fileStorageService.getStoredFileRaw(fileKey)
+        response.contentType = fileEntry.contentType
 
         response.addHeader(
             HttpHeaders.ACCEPT_RANGES,
@@ -74,20 +67,20 @@ class UploadController(
             HttpHeaders.CONTENT_DISPOSITION,
             ContentDisposition
                 .builder("inline")
-                .filename(fileEntry.filename.value.ifBlank { "file" }, Charset.forName("UTF-8"))
+                .filename(fileEntry.filename.ifBlank { "file" }, Charset.forName("UTF-8"))
                 .build()
                 .toString()
         )
         try {
-            val range = requestRangeParser(request.getHeader("Range"), fileEntry.size.value)
+            val range = requestRangeParser(request.getHeader("Range"), fileEntry.size)
 
             if (range.partial) {
-                response.addHeader(HttpHeaders.CONTENT_RANGE, "bytes ${range.from}-${range.to}/${fileEntry.size.value}")
+                response.addHeader(HttpHeaders.CONTENT_RANGE, "bytes ${range.from}-${range.to}/${fileEntry.size}")
                 response.addHeader(HttpHeaders.CONTENT_LENGTH, range.responseSize.toString())
                 response.status = HttpStatus.PARTIAL_CONTENT.value()
                 IOUtils.copyLarge(stream, response.outputStream, range.from, range.responseSize)
             } else {
-                response.addHeader(HttpHeaders.CONTENT_LENGTH, fileEntry.size.value.toString())
+                response.addHeader(HttpHeaders.CONTENT_LENGTH, fileEntry.size.toString())
                 IOUtils.copyLarge(stream, response.outputStream)
             }
             response.outputStream.flush()
@@ -105,13 +98,11 @@ class UploadController(
     fun verifyFileAccess(
         @PathVariable fileKey: String,
         @Validated @RequestBody
-        operationDto: AuthorizedOperationDTO?,
-        principal: Principal?
+        operationDto: AuthorizedOperationDTO?
     ): BasicResponseDTO {
-        val fileEntry = fileService.findFileEntry(FileKey(fileKey)) ?: throw NotFoundException()
+        val fileEntry = fileService.findFileEntry(fileKey) ?: throw NotFoundException()
 
-        val user = userService.fromPrincipal(principal)
-        if (!fileService.verifyFileAccess(fileEntry, operationDto?.accessToken?.let { FileAccessToken(it) }, user)) {
+        if (!fileService.verifyFileAccess(fileEntry, operationDto?.accessToken)) {
             throw AccessDeniedException()
         }
         return BasicResponseDTO()
@@ -121,13 +112,11 @@ class UploadController(
     fun deleteFile(
         @PathVariable fileKey: String,
         @Validated @RequestBody
-        operationDto: AuthorizedOperationDTO?,
-        principal: Principal?
+        operationDto: AuthorizedOperationDTO?
     ) {
-        val fileEntry = fileService.findFileEntry(FileKey(fileKey)) ?: throw NotFoundException()
-        val user = userService.fromPrincipal(principal)
+        val fileEntry = fileService.findFileEntry(fileKey) ?: throw NotFoundException()
 
-        if (!fileService.verifyFileAccess(fileEntry, operationDto?.accessToken?.let { FileAccessToken(it) }, user)) {
+        if (!fileService.verifyFileAccess(fileEntry, operationDto?.accessToken)) {
             throw AccessDeniedException()
         }
 
@@ -138,5 +127,5 @@ class UploadController(
      * @return Uploaded file metadata
      */
     @GetMapping("/api/u/{fileKey}/details")
-    fun getFileDetails(@PathVariable fileKey: String): FileDetailsDTO = fileService.getFileDetails(FileKey(fileKey))
+    fun getFileDetails(@PathVariable fileKey: String): FileDetailsDTO = fileService.getFileDetails(fileKey)
 }

@@ -5,7 +5,6 @@ import org.apache.commons.io.IOUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Repository
 import pl.starchasers.up.data.model.FileContent
-import pl.starchasers.up.data.value.FileKey
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -14,11 +13,11 @@ import java.nio.file.Paths
 interface UploadRepository {
     fun save(fileContent: FileContent)
 
-    fun find(key: FileKey): FileContent?
+    fun find(key: String): FileContent?
 
-    fun delete(key: FileKey)
+    fun delete(key: String)
 
-    fun exists(key: FileKey): Boolean
+    fun exists(key: String): Boolean
 }
 
 @Repository
@@ -57,8 +56,8 @@ class UploadRepositoryImpl() : UploadRepository {
         IOUtils.closeQuietly(outputStream)
     }
 
-    override fun find(key: FileKey): FileContent? {
-        if (key.value.length < 4) throw IllegalArgumentException("Malformed file key")
+    override fun find(key: String): FileContent? {
+        if (key.length < 4) throw IllegalArgumentException("Malformed file key")
 
         val file = getFileFromKey(key)
 
@@ -69,7 +68,7 @@ class UploadRepositoryImpl() : UploadRepository {
         return FileContent(key, FileInputStream(file))
     }
 
-    override fun delete(key: FileKey) {
+    override fun delete(key: String) {
         val file = getFileFromKey(key)
         if (!file.exists()) return
 
@@ -81,7 +80,7 @@ class UploadRepositoryImpl() : UploadRepository {
         deleteDirIfEmpty(file.parentFile.parentFile)
     }
 
-    override fun exists(key: FileKey): Boolean {
+    override fun exists(key: String): Boolean {
         val file = getFileFromKey(key)
         if (file.isDirectory || !file.isFile)
             throwExceptionDataStoreCorrupted(key)
@@ -89,15 +88,15 @@ class UploadRepositoryImpl() : UploadRepository {
         return file.exists()
     }
 
-    private fun getFileFromKey(key: FileKey): File = Paths.get(
+    private fun getFileFromKey(key: String): File = Paths.get(
         dataStorePath,
-        key.value.substring(0, 2),
-        key.value.substring(2, 4),
-        key.value
+        key.substring(0, 2),
+        key.substring(2, 4),
+        key
     ).toFile()
 
-    private fun throwExceptionDataStoreCorrupted(key: FileKey): Nothing =
-        throw IllegalStateException("Requested file ${key.value} is not a regular file - datastore corrupted!")
+    private fun throwExceptionDataStoreCorrupted(key: String): Nothing =
+        throw IllegalStateException("Requested file $key is not a regular file - datastore corrupted!")
 
     private fun deleteDirIfEmpty(file: File) {
         if (file.listFiles()?.isEmpty() ?: throw IllegalArgumentException("Not a directory!")) {

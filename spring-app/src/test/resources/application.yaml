@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  servlet:
+    multipart:
+      enabled: false
+
+up:
+  datastore: ${DATASTORE_PATH:uploads}
+  max-file-size: 100
+  cleanup-interval: ${UP_CLEANUP_INTERVAL:3600000}
+  domain: ${UP_DOMAIN:http://localhost:8080}
+  chunk-size: 4194304
+  dev:
+    cors: ${UP_DEV_CORS:false}
