@@ -8,37 +8,34 @@ import pl.starchasers.up.data.dto.upload.FileDetailsDTO
 import pl.starchasers.up.data.dto.upload.UploadCompleteResponseDTO
 import pl.starchasers.up.data.model.ConfigurationKey.ANONYMOUS_MAX_FILE_SIZE
 import pl.starchasers.up.data.model.FileEntry
-import pl.starchasers.up.data.model.User
-import pl.starchasers.up.data.value.*
 import pl.starchasers.up.exception.FileTooLargeException
 import pl.starchasers.up.exception.NotFoundException
 import pl.starchasers.up.repository.FileEntryRepository
 import pl.starchasers.up.util.Util
 import java.io.InputStream
-import java.sql.Timestamp
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 interface FileService {
 
     fun createFile(
         tmpFile: InputStream,
-        filename: Filename,
-        contentType: ContentType,
-        size: FileSize,
-        user: User?
+        filename: String,
+        contentType: String,
+        size: Long
     ): UploadCompleteResponseDTO
 
-    fun verifyFileAccess(fileEntry: FileEntry, accessToken: FileAccessToken?, user: User?): Boolean
+    fun verifyFileAccess(fileEntry: FileEntry, accessToken: String?): Boolean
 
-    fun verifyFileAccess(fileKey: FileKey, accessToken: FileAccessToken?, user: User?): Boolean
+    fun verifyFileAccess(fileKey: String, accessToken: String?): Boolean
 
-    fun findFileEntry(fileKey: FileKey): FileEntry?
+    fun findFileEntry(fileKey: String): FileEntry?
 
-    fun getFileDetails(fileKey: FileKey): FileDetailsDTO
+    fun getFileDetails(fileKey: String): FileDetailsDTO
 
     fun deleteFile(fileEntry: FileEntry)
 
-    fun getUploadHistory(user: User, pageable: Pageable): Page<FileEntry>
+    fun getUploadHistory(pageable: Pageable): Page<FileEntry>
 }
 
 @Service
@@ -54,71 +51,61 @@ class FileServiceImpl(
     @Transactional
     override fun createFile(
         tmpFile: InputStream,
-        filename: Filename,
-        contentType: ContentType,
-        size: FileSize,
-        user: User?
+        filename: String,
+        contentType: String,
+        size: Long
     ): UploadCompleteResponseDTO {
         val actualContentType = when {
-            contentType.value.isBlank() -> ContentType("application/octet-stream")
-            contentType.value == "text/plain" -> ContentType(
-                "text/plain; charset=" + charsetDetectionService.detect(
-                    tmpFile
-                )
-            )
+            contentType.isBlank() -> "application/octet-stream"
+            contentType == "text/plain" -> "text/plain; charset=" + charsetDetectionService.detect(tmpFile)
             else -> contentType
         }
-        val personalLimit: FileSize = user?.maxTemporaryFileSize
-            ?: FileSize(configurationService.getConfigurationOption(ANONYMOUS_MAX_FILE_SIZE).toLong())
+        val personalLimit: Long = configurationService.getConfigurationOption(ANONYMOUS_MAX_FILE_SIZE).toLong()
 
         if (size > personalLimit) throw FileTooLargeException()
 
         val key = fileStorageService.storeNonPermanentFile(tmpFile, filename)
         // TODO check key already used
         val accessToken = generateFileAccessToken()
-        val toDeleteDate = Timestamp.valueOf(LocalDateTime.now().plusDays(1))
-        val fileEntry = FileEntry(
-            0,
-            key,
-            filename,
-            actualContentType,
-            null,
-            false,
-            Timestamp.valueOf(LocalDateTime.now()),
-            toDeleteDate,
-            false,
-            accessToken,
-            size,
-            user
-        )
+        val toDeleteAt = Instant.now().plus(1, ChronoUnit.DAYS)
 
-        fileEntryRepository.save(fileEntry)
+        val fileEntry = FileEntry {
+            this.accessToken = accessToken
+            this.contentType = actualContentType
+            this.createdAt = Instant.now()
+            this.encrypted = false
+            this.filename = filename
+            this.key = key
+            this.password = null
+            this.size = size
+            this.toDeleteAt = toDeleteAt
+        }
 
-        return UploadCompleteResponseDTO(key.value, accessToken.value, toDeleteDate)
+        fileEntryRepository.insert(fileEntry)
+
+        return UploadCompleteResponseDTO(key, accessToken, toDeleteAt)
     }
 
-    override fun verifyFileAccess(fileEntry: FileEntry, accessToken: FileAccessToken?, user: User?): Boolean {
-        return (user != null && fileEntry.owner == user) || fileEntry.accessToken == accessToken
+    override fun verifyFileAccess(fileEntry: FileEntry, accessToken: String?): Boolean {
+        return (fileEntry.accessToken != null) && fileEntry.accessToken == accessToken
     }
 
-    override fun verifyFileAccess(fileKey: FileKey, accessToken: FileAccessToken?, user: User?): Boolean =
+    override fun verifyFileAccess(fileKey: String, accessToken: String?): Boolean =
         fileEntryRepository
             .findExistingFileByKey(fileKey)
-            ?.let { verifyFileAccess(it, accessToken, user) } ?: false
+            ?.let { verifyFileAccess(it, accessToken) } == true
 
-    override fun findFileEntry(fileKey: FileKey): FileEntry? = fileEntryRepository.findExistingFileByKey(fileKey)
+    override fun findFileEntry(fileKey: String): FileEntry? = fileEntryRepository.findExistingFileByKey(fileKey)
 
-    override fun getFileDetails(fileKey: FileKey): FileDetailsDTO =
+    override fun getFileDetails(fileKey: String): FileDetailsDTO =
         fileEntryRepository.findExistingFileByKey(fileKey)?.let {
             FileDetailsDTO(
-                it.key.value,
-                it.filename.value,
-                it.permanent,
-                if (!it.permanent) it.toDeleteDate
-                    ?: throw IllegalStateException("Temporary file without delete date! FileKey: ${it.key}")
-                else null,
-                it.size.value,
-                it.contentType.value
+                it.key,
+                it.filename,
+                it.toDeleteAt == null,
+                it.toDeleteAt,
+                it.size,
+                it.contentType
             )
         } ?: throw NotFoundException()
 
@@ -126,9 +113,9 @@ class FileServiceImpl(
         fileStorageService.deleteFile(fileEntry)
     }
 
-    override fun getUploadHistory(user: User, pageable: Pageable): Page<FileEntry> {
-        return fileEntryRepository.findAllByOwner(user, pageable)
+    override fun getUploadHistory(pageable: Pageable): Page<FileEntry> {
+        return fileEntryRepository.findAll(pageable)
     }
 
-    private fun generateFileAccessToken(): FileAccessToken = FileAccessToken(util.secureAlphanumericRandomString(128))
+    private fun generateFileAccessToken(): String = util.secureAlphanumericRandomString(128)
 }

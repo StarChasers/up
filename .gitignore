@@ -81,3 +81,10 @@ gatsby-app/.DS_Store
 
 #up / project files
 uploads/*
+
+# locale configuration
+*.env
+.env
+.env.*
+docker-compose.yml
+docker-compose.yaml
