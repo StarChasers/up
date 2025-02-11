@@ -12,7 +12,7 @@ jobs:
       - name: Install Dependencies
         run: cd ./next-app && yarn install --frozen-lockfile
       - name: Cache node_modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: './next-app/node_modules'
           key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
@@ -24,7 +24,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Cache node_modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: './next-app/node_modules'
           key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
@@ -38,7 +38,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Cache node_modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: './next-app/node_modules'
           key: ${{ runner.os }}-next-${{ hashFiles('./next-app/yarn.lock') }}
