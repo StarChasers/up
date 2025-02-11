@@ -15,17 +15,14 @@ import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.multipart
 import pl.starchasers.up.*
-import pl.starchasers.up.data.dto.configuration.UpdateUserConfigurationDTO
 import pl.starchasers.up.data.dto.upload.FileDetailsDTO
 import pl.starchasers.up.data.dto.upload.UploadCompleteResponseDTO
-import pl.starchasers.up.data.value.*
+import pl.starchasers.up.data.model.ConfigurationKey
 import pl.starchasers.up.repository.FileEntryRepository
 import pl.starchasers.up.repository.UploadRepository
-import pl.starchasers.up.security.Role
 import pl.starchasers.up.service.ConfigurationService
 import pl.starchasers.up.service.FileService
-import pl.starchasers.up.service.UserService
-import java.time.LocalDateTime
+import java.time.Instant
 
 internal class UploadControllerTest : JpaTestBase() {
 
@@ -33,7 +30,6 @@ internal class UploadControllerTest : JpaTestBase() {
     inner class AnonymousUpload(
         @Autowired private val fileEntryRepository: FileEntryRepository,
         @Autowired private val uploadRepository: UploadRepository,
-        @Autowired private val userService: UserService,
         @Autowired private val configurationService: ConfigurationService
     ) : MockMvcTestBase() {
 
@@ -56,21 +52,21 @@ internal class UploadControllerTest : JpaTestBase() {
                 status { isOk() }
             }.andReturn().parse()
 
+            assertEquals(1, fileEntryRepository.count())
             val fileEntry = fileEntryRepository.findAll()[0]
             with(response) {
-                key shouldBe fileEntry.key.value
-                accessToken shouldBe fileEntry.accessToken.value
+                key shouldBe fileEntry.key
+                accessToken shouldBe fileEntry.accessToken
                 toDelete.shouldNotBeNull()
             }
 
             with(fileEntry) {
-                contentType.value shouldBe "text/plain; charset=UTF-8"
+                contentType shouldBe "text/plain; charset=UTF-8"
                 encrypted shouldBe false
-                filename.value shouldBe "exampleTextFile.txt"
+                filename shouldBe "exampleTextFile.txt"
                 password.shouldBeNull()
-                permanent shouldBe false
-                toDeleteDate.shouldNotBeNull()
-                fileEntry.toDeleteDate!!.toLocalDateTime().isAfter(LocalDateTime.now()) shouldBe true
+                toDeleteAt.shouldNotBeNull()
+                fileEntry.toDeleteAt!!.isAfter(Instant.now()) shouldBe true
             }
 
             uploadRepository.find(fileEntry.key)?.let { fileContent ->
@@ -103,19 +99,18 @@ internal class UploadControllerTest : JpaTestBase() {
 
             val fileEntry = fileEntryRepository.findAll()[0]
             with(response) {
-                key shouldBe fileEntry.key.value
-                accessToken shouldBe fileEntry.accessToken.value
+                key shouldBe fileEntry.key
+                accessToken shouldBe fileEntry.accessToken
                 toDelete.shouldNotBeNull()
             }
 
             with(fileEntry) {
-                fileEntry.contentType.value shouldBe "application/octet-stream"
+                fileEntry.contentType shouldBe "application/octet-stream"
                 encrypted shouldBe false
-                filename.value shouldBe "exampleTextFile.txt"
+                filename shouldBe "exampleTextFile.txt"
                 password.shouldBeNull()
-                permanent shouldBe false
-                toDeleteDate.shouldNotBeNull()
-                toDeleteDate!!.toLocalDateTime().isAfter(LocalDateTime.now()) shouldBe true
+                toDeleteAt.shouldNotBeNull()
+                toDeleteAt!!.isAfter(Instant.now()) shouldBe true
             }
 
             uploadRepository.find(fileEntry.key)?.let { fileContent ->
@@ -125,23 +120,17 @@ internal class UploadControllerTest : JpaTestBase() {
 
         @Test
         fun `Given too large file, should return 413`() {
-            val testUser = userService.createUser(Username("testUser"), RawPassword("password"), null, Role.USER)
-            configurationService.updateUserConfiguration(
-                testUser,
-                UpdateUserConfigurationDTO(
-                    10,
-                    testUser.maxFileLifetime.value,
-                    testUser.defaultFileLifetime.value,
-                    testUser.maxPermanentFileSize.value
-                )
+            configurationService.updateGlobalConfiguration(
+                mapOf(ConfigurationKey.ANONYMOUS_MAX_FILE_SIZE to "8")
             )
-
             mockMvc.multipart(requestPath) {
-                authorizeAsUser(testUser)
                 file(getExampleTextFile())
             }.andExpect {
                 status { isPayloadTooLarge() }
             }
+            configurationService.updateGlobalConfiguration(
+                mapOf(ConfigurationKey.ANONYMOUS_MAX_FILE_SIZE to "10485760")
+            )
         }
     }
 
@@ -155,10 +144,9 @@ internal class UploadControllerTest : JpaTestBase() {
 
         private fun createFile(contentType: String, fileContent: String = content): String = fileService.createFile(
             fileContent.byteInputStream(),
-            Filename("fileName.txt"),
-            ContentType(contentType),
-            FileSize(fileContent.byteInputStream().readAllBytes().size.toLong()),
-            null
+            "fileName.txt",
+            contentType,
+            fileContent.byteInputStream().readAllBytes().size.toLong()
         ).key
 
         @Test
@@ -248,8 +236,7 @@ internal class UploadControllerTest : JpaTestBase() {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     inner class VerifyFileAccess(
         @Autowired val fileService: FileService,
-        @Autowired val fileEntryRepository: FileEntryRepository,
-        @Autowired val userService: UserService
+        @Autowired val fileEntryRepository: FileEntryRepository
     ) : MockMvcTestBase() {
         private val requestPath = "/api/u/{key}/verify"
         private val content = "example content"
@@ -261,13 +248,12 @@ internal class UploadControllerTest : JpaTestBase() {
         fun setup() {
             fileKey = fileService.createFile(
                 content.byteInputStream(),
-                Filename("filename.txt"),
-                ContentType("text/plain"),
-                FileSize(content.byteInputStream().readAllBytes().size.toLong()),
-                userService.getUser(Username("root"))
+                "filename.txt",
+                "text/plain",
+                content.byteInputStream().readAllBytes().size.toLong()
             ).key
 
-            fileAccessToken = fileEntryRepository.findExistingFileByKey(FileKey(fileKey))?.accessToken?.value
+            fileAccessToken = fileEntryRepository.findExistingFileByKey(fileKey)?.accessToken
                 ?: throw IllegalStateException()
         }
 
@@ -277,15 +263,6 @@ internal class UploadControllerTest : JpaTestBase() {
                 jsonContent = object {
                     val accessToken = fileAccessToken
                 }
-            }.andExpect {
-                status { isOk() }
-            }
-        }
-
-        @Test
-        fun `Given valid owner and no token, should return 200`() {
-            mockMvc.postJson(requestPath, fileKey) {
-                authorizeAsAdmin()
             }.andExpect {
                 status { isOk() }
             }
@@ -349,10 +326,9 @@ internal class UploadControllerTest : JpaTestBase() {
         fun setup() {
             fileKey = fileService.createFile(
                 content.byteInputStream(),
-                Filename(filename),
-                ContentType(contentType),
-                FileSize(content.byteInputStream().readAllBytes().size.toLong()),
-                null
+                filename,
+                contentType,
+                content.byteInputStream().readAllBytes().size.toLong()
             ).key
         }
 
@@ -386,8 +362,7 @@ internal class UploadControllerTest : JpaTestBase() {
     inner class DeleteFile(
         @Autowired val fileService: FileService,
         @Autowired val uploadRepository: UploadRepository,
-        @Autowired val fileEntryRepository: FileEntryRepository,
-        @Autowired val userService: UserService
+        @Autowired val fileEntryRepository: FileEntryRepository
     ) : MockMvcTestBase() {
 
         private val requestPath = "/api/u/{key}"
@@ -396,10 +371,9 @@ internal class UploadControllerTest : JpaTestBase() {
             val fileContent = "fileContent"
             return fileService.createFile(
                 fileContent.byteInputStream(),
-                Filename("file"),
-                ContentType("text/plain"),
-                FileSize(fileContent.length.toLong()),
-                userService.getUser(Username("root"))
+                "file",
+                "text/plain",
+                fileContent.length.toLong()
             )
         }
 
@@ -414,19 +388,8 @@ internal class UploadControllerTest : JpaTestBase() {
                 status { isOk() }
             }
 
-            assertNull(uploadRepository.find(FileKey(response.key)))
-            assertNull(fileEntryRepository.findExistingFileByKey(FileKey(response.key)))
-        }
-
-        @Test
-        fun `Given valid owner, should delete file`() {
-            val response = createTestFile()
-
-            mockMvc.deleteJson(requestPath, response.key) {
-                authorizeAsAdmin()
-            }.andExpect {
-                status { isOk() }
-            }
+            assertNull(uploadRepository.find(response.key))
+            assertNull(fileEntryRepository.findExistingFileByKey(response.key))
         }
 
         @Test
@@ -441,8 +404,8 @@ internal class UploadControllerTest : JpaTestBase() {
                 status { isForbidden() }
             }
 
-            assertNotNull(uploadRepository.find(FileKey(response.key)))
-            assertNotNull(fileEntryRepository.findExistingFileByKey(FileKey(response.key)))
+            assertNotNull(uploadRepository.find(response.key))
+            assertNotNull(fileEntryRepository.findExistingFileByKey(response.key))
         }
 
         @Test
@@ -457,8 +420,8 @@ internal class UploadControllerTest : JpaTestBase() {
                 status { isNotFound() }
             }
 
-            assertNotNull(uploadRepository.find(FileKey(response.key)))
-            assertNotNull(fileEntryRepository.findExistingFileByKey(FileKey(response.key)))
+            assertNotNull(uploadRepository.find(response.key))
+            assertNotNull(fileEntryRepository.findExistingFileByKey(response.key))
         }
     }
 }

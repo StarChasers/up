@@ -1,10 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("org.springframework.boot") version "3.0.1"
+    id("org.springframework.boot") version "3.1.6"
     id("io.spring.dependency-management") version "1.1.0"
     id("org.asciidoctor.jvm.convert") version "3.2.0"
-    id("org.flywaydb.flyway") version "7.5.2"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
 
     kotlin("jvm") version "2.1.0"
@@ -27,23 +26,24 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("commons-fileupload:commons-fileupload:1.5")
-    implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
-    implementation("io.jsonwebtoken:jjwt-gson:0.11.5")
-    implementation("org.flywaydb:flyway-core:9.10.2")
-    implementation("org.flywaydb:flyway-mysql:9.10.2")
-    implementation("ch.vorburger.mariaDB4j:mariaDB4j:2.4.0")
+    implementation("org.flywaydb:flyway-core:11.3.1")
+    implementation("org.flywaydb:flyway-database-postgresql:11.3.1")
     implementation("com.ibm.icu:icu4j:72.1")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2")
     implementation("com.github.therapi:therapi-runtime-javadoc:0.15.0")
     kapt("com.github.therapi:therapi-runtime-javadoc-scribe:0.15.0")
-    runtimeOnly("com.h2database:h2:1.4.200")
-    runtimeOnly("mysql:mysql-connector-java")
-    runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     runtimeOnly(files("../next-app/next-app.jar"))
 
+    implementation("org.ktorm:ktorm-support-postgresql:4.1.1")
+    implementation("org.ktorm:ktorm-core:4.1.1")
+    runtimeOnly("org.postgresql:postgresql:42.7.5")
+
+    testImplementation("org.postgresql:postgresql:42.7.5")
+    testImplementation("org.testcontainers:postgresql:1.20.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
@@ -67,7 +67,6 @@ ext {
 ktlint {
     version.set("1.4.1")
     ignoreFailures.set(true)
-    disabledRules.set(setOf("no-wildcard-imports"))
 }
 
 tasks {

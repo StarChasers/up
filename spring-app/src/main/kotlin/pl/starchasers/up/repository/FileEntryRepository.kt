@@ -1,30 +1,29 @@
 package pl.starchasers.up.repository
 
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
-import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Query
+import org.ktorm.database.Database
+import org.ktorm.dsl.*
+import org.springframework.stereotype.Service
+import pl.starchasers.up.data.model.FileEntries
 import pl.starchasers.up.data.model.FileEntry
-import pl.starchasers.up.data.model.User
-import pl.starchasers.up.data.value.FileKey
+import java.time.Instant
 
-interface FileEntryRepository : JpaRepository<FileEntry, Long> {
+@Service
+class FileEntryRepository(
+    database: Database
+) : StandardRepository<FileEntry, FileEntries>(FileEntries, database) {
 
-    @Query(
-        """
-        from FileEntry f where f.key=:key 
-    """
-    )
-    fun findExistingFileByKey(key: FileKey): FileEntry?
+    fun findExistingFileByKey(key: String): FileEntry? =
+        database.from(table)
+            .select()
+            .where { table.key eq key }
+            .map { table.createEntity(it) }
+            .firstOrNull()
 
-    @Query(
-        """
-        from FileEntry f
-        where f.permanent = false
-            and f.toDeleteDate < current_timestamp
-    """
-    )
-    fun findExpiredFiles(): Set<FileEntry>
+    fun findExpiredFiles(): Set<FileEntry> =
+        database.from(table)
+            .select()
+            .where { table.deleteAt.isNotNull() and table.deleteAt.less(Instant.now()) }
+            .map { table.createEntity(it) }
+            .toSet()
 
-    fun findAllByOwner(owner: User, pageable: Pageable): Page<FileEntry>
 }
