@@ -103,7 +103,7 @@ jobs:
         run: ./gradlew bootjar
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: up.jar
           path: spring-app/build/libs/up.jar
