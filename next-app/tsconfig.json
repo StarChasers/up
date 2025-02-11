@@ -5,6 +5,16 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
+    "importsNotUsedAsValues": "error",
+    "noErrorTruncation": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -20,8 +30,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "eslint.config.mjs"]
 }
