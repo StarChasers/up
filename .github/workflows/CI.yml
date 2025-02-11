@@ -47,7 +47,7 @@ jobs:
       - name: Package Jar
         run: cd next-app && ln -s out static && zip -0 -r next-app.jar static
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: next-app.jar
           path: next-app/next-app.jar
